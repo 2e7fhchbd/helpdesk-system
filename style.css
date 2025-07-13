@@ -1,0 +1,25 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background: #f9f9f9;
+}
+.ticket {
+  border: 1px solid #ccc;
+  background: #fff;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 5px;
+}
+.tickets-grid {
+  display: grid;
+  gap: 10px;
+}
+.status.Open {
+  color: red;
+}
+.status["In Progress"] {
+  color: orange;
+}
+.status.Resolved {
+  color: green;
+}
