@@ -1,0 +1,34 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Helpdesk - User</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Submit IT Issue</h1>
+  <form id="ticketForm">
+    <input type="text" id="name" placeholder="Your Name" required><br>
+    <input type="text" id="department" placeholder="Department"><br>
+    <input type="text" id="title" placeholder="Issue Title" required><br>
+    <textarea id="description" placeholder="Describe the issue" required></textarea><br>
+    <label>Priority:
+      <select id="priority">
+        <option>Low</option>
+        <option>Medium</option>
+        <option>High</option>
+      </select>
+    </label><br>
+    <button type="submit">Submit Ticket</button>
+  </form>
+  <div id="success-message" style="color: green; font-weight: bold;"></div>
+
+  <hr>
+  <h2>My Submitted Tickets</h2>
+  <div id="userTickets"></div>
+
+  <a href="admin.html" target="_blank">🔒 Go to Admin Panel</a>
+
+  <script src="script.js"></script>
+</body>
+</html>
