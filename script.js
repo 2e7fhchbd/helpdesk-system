@@ -1,83 +1,93 @@
-// Import Firebase modules
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // Your Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyAJz1bkwfmGfOPKm2aPTNc0QTmHA6FzHfU",
-  authDomain: "ithelp-fa911.firebaseapp.com",
-  projectId: "ithelp-fa911",
-  storageBucket: "ithelp-fa911.appspot.com",
-  messagingSenderId: "991792960822",
-  appId: "1:991792960822:web:cd63301d95764e60fe4f97"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_BUCKET",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const ticketsCollection = collection(db, "tickets");
 
-// Check if user is on the form page or admin page
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('ticketForm');
-  const adminDiv = document.getElementById('adminTickets');
+// Submit form
+const form = document.getElementById("ticketForm");
+if (form) {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  if (form) {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const name = document.getElementById("name").value;
+    const department = document.getElementById("department").value;
+    const title = document.getElementById("title").value;
+    const description = document.getElementById("description").value;
+    const priority = document.getElementById("priority").value;
 
-      const name = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
-      const issue = document.getElementById('issue').value;
+    try {
+      await addDoc(ticketsCollection, {
+        name,
+        department,
+        title,
+        description,
+        priority,
+        timestamp: new Date()
+      });
 
-      if (!name || !email || !issue) {
-        alert("Please fill in all fields.");
-        return;
-      }
-
-      try {
-        await addDoc(collection(db, "tickets"), {
-          name,
-          email,
-          issue,
-          timestamp: new Date()
-        });
-
-        alert("Ticket submitted successfully!");
-        form.reset();
-      } catch (error) {
-        console.error("Error adding ticket: ", error);
-        alert("Failed to submit ticket.");
-      }
-    });
-  }
-
-  if (adminDiv) {
-    loadTickets(adminDiv);
-  }
-});
-
-// Function to load tickets to admin page
-async function loadTickets(container) {
-  container.innerHTML = "<p>Loading tickets...</p>";
-
-  try {
-    const querySnapshot = await getDocs(collection(db, "tickets"));
-
-    if (querySnapshot.empty) {
-      container.innerHTML = "<p>No tickets found.</p>";
-      return;
+      document.getElementById("success-message").textContent = "Ticket submitted!";
+      form.reset();
+    } catch (err) {
+      console.error("Error submitting ticket:", err);
     }
+  });
+}
 
-    let html = "<ul>";
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      html += `<li><strong>${data.name}</strong> (${data.email}): ${data.issue}</li>`;
+// Display user tickets
+const userTicketsDiv = document.getElementById("userTickets");
+if (userTicketsDiv) {
+  const q = query(ticketsCollection, orderBy("timestamp", "desc"));
+  onSnapshot(q, (snapshot) => {
+    userTicketsDiv.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const ticket = doc.data();
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <strong>${ticket.title}</strong> (${ticket.priority})<br>
+        ${ticket.description}<br>
+        <em>By ${ticket.name} - ${ticket.department}</em>
+        <hr>
+      `;
+      userTicketsDiv.appendChild(div);
     });
-    html += "</ul>";
+  });
+}
 
-    container.innerHTML = html;
-  } catch (error) {
-    console.error("Error fetching tickets: ", error);
-    container.innerHTML = "<p>Failed to load tickets.</p>";
-  }
+// Display admin tickets
+const adminTicketsDiv = document.getElementById("adminTickets");
+if (adminTicketsDiv) {
+  const q = query(ticketsCollection, orderBy("timestamp", "desc"));
+  onSnapshot(q, (snapshot) => {
+    adminTicketsDiv.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const ticket = doc.data();
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <h3>${ticket.title} (${ticket.priority})</h3>
+        <p>${ticket.description}</p>
+        <p><strong>${ticket.name}</strong> - ${ticket.department}</p>
+        <hr>
+      `;
+      adminTicketsDiv.appendChild(div);
+    });
+  });
 }
