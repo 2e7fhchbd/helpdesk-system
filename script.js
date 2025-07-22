@@ -1,28 +1,21 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
 
-// Your Firebase config
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAJz1bkwfmGfOPKm2aPTNc0QTmHA6FzHfU",
+  authDomain: "ithelp-fa911.firebaseapp.com",
+  projectId: "ithelp-fa911",
+  storageBucket: "ithelp-fa911.appspot.com",
+  messagingSenderId: "991792960822",
+  appId: "1:991792960822:web:cd63301d95764e60fe4f97"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const ticketsCollection = collection(db, "tickets");
 
-// Submit form
+// Submit ticket (for user.html)
 const form = document.getElementById("ticketForm");
 if (form) {
   form.addEventListener("submit", async (e) => {
@@ -35,7 +28,7 @@ if (form) {
     const priority = document.getElementById("priority").value;
 
     try {
-      await addDoc(ticketsCollection, {
+      await addDoc(collection(db, "tickets"), {
         name,
         department,
         title,
@@ -43,51 +36,44 @@ if (form) {
         priority,
         timestamp: new Date()
       });
-
-      document.getElementById("success-message").textContent = "Ticket submitted!";
+      document.getElementById("success-message").innerText = "Ticket submitted successfully!";
       form.reset();
-    } catch (err) {
-      console.error("Error submitting ticket:", err);
+      loadTickets("userTickets"); // Refresh tickets list
+    } catch (error) {
+      console.error("Error adding document: ", error);
     }
   });
 }
 
-// Display user tickets
-const userTicketsDiv = document.getElementById("userTickets");
-if (userTicketsDiv) {
-  const q = query(ticketsCollection, orderBy("timestamp", "desc"));
-  onSnapshot(q, (snapshot) => {
-    userTicketsDiv.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const ticket = doc.data();
-      const div = document.createElement("div");
-      div.innerHTML = `
-        <strong>${ticket.title}</strong> (${ticket.priority})<br>
-        ${ticket.description}<br>
-        <em>By ${ticket.name} - ${ticket.department}</em>
-        <hr>
-      `;
-      userTicketsDiv.appendChild(div);
-    });
+// Load tickets (for both user.html and admin.html)
+async function loadTickets(containerId) {
+  const ticketsContainer = document.getElementById(containerId);
+  if (!ticketsContainer) return;
+
+  ticketsContainer.innerHTML = "Loading tickets...";
+
+  const q = query(collection(db, "tickets"), orderBy("timestamp", "desc"));
+  const querySnapshot = await getDocs(q);
+
+  ticketsContainer.innerHTML = "";
+  querySnapshot.forEach((doc) => {
+    const ticket = doc.data();
+    const ticketDiv = document.createElement("div");
+    ticketDiv.className = "ticket";
+    ticketDiv.innerHTML = `
+      <strong>${ticket.title}</strong><br>
+      <em>By ${ticket.name} (${ticket.department})</em><br>
+      <span>Priority: ${ticket.priority}</span><br>
+      <p>${ticket.description}</p>
+      <small>${new Date(ticket.timestamp.seconds * 1000).toLocaleString()}</small>
+      <hr>
+    `;
+    ticketsContainer.appendChild(ticketDiv);
   });
 }
 
-// Display admin tickets
-const adminTicketsDiv = document.getElementById("adminTickets");
-if (adminTicketsDiv) {
-  const q = query(ticketsCollection, orderBy("timestamp", "desc"));
-  onSnapshot(q, (snapshot) => {
-    adminTicketsDiv.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const ticket = doc.data();
-      const div = document.createElement("div");
-      div.innerHTML = `
-        <h3>${ticket.title} (${ticket.priority})</h3>
-        <p>${ticket.description}</p>
-        <p><strong>${ticket.name}</strong> - ${ticket.department}</p>
-        <hr>
-      `;
-      adminTicketsDiv.appendChild(div);
-    });
-  });
-}
+// Load tickets for both user and admin
+window.addEventListener("DOMContentLoaded", () => {
+  loadTickets("userTickets");
+  loadTickets("adminTickets");
+});
