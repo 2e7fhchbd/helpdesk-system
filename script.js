@@ -1,132 +1,143 @@
+// Firebase setup
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-
+// Your Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyAJz1bkwfmGfOPKm2aPTNc0QTmHA6FzHfU",
-  authDomain: "ithelp-fa911.firebaseapp.com",
-  projectId: "ithelp-fa911",
-  storageBucket: "ithelp-fa911.appspot.com",
-  messagingSenderId: "991792960822",
-  appId: "1:991792960822:web:cd63301d95764e60fe4f97"
+  apiKey: "AIzaSyDKMArGnFu3n1-R4pQFbPOIMtb_tPMsX1s",
+  authDomain: "helpdesk-system-c22b7.firebaseapp.com",
+  projectId: "helpdesk-system-c22b7",
+  storageBucket: "helpdesk-system-c22b7.appspot.com",
+  messagingSenderId: "486149560517",
+  appId: "1:486149560517:web:343c8f7257b03c243de0c4"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const ticketsCollection = collection(db, "tickets");
 
-const isAdmin = window.location.pathname.includes("admin");
+// ============ Ticket Submission ============ //
+const submitBtn = document.getElementById("submit-btn");
 
-async function getTickets() {
-  const snapshot = await getDocs(ticketsCollection);
-  return snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-}
-
-async function saveTicket(ticket) {
-  await addDoc(ticketsCollection, ticket);
-}
-
-async function updateStatus(id, newStatus) {
-  const ticketRef = doc(db, "tickets", id);
-  await updateDoc(ticketRef, { status: newStatus });
-  renderAdminTickets();
-}
-
-async function renderUserTickets() {
-  const container = document.getElementById("userTickets");
-  const username = document.getElementById("name")?.value || localStorage.getItem("currentUser");
-  if (!container || !username) return;
-
-  const tickets = await getTickets();
-  const userTickets = tickets.filter(t => t.name === username);
-
-  container.innerHTML = "";
-  const grid = document.createElement("div");
-  grid.className = "tickets-grid";
-
-  userTickets.forEach(ticket => {
-    const div = document.createElement("div");
-    div.className = "ticket";
-    div.innerHTML = `
-      <strong>${ticket.title}</strong><br>
-      ${ticket.description}<br>
-      Priority: ${ticket.priority}<br>
-      <span class="status ${ticket.status}">${ticket.status}</span><br>
-      Date: ${ticket.date}
-    `;
-    grid.appendChild(div);
-  });
-
-  container.appendChild(grid);
-}
-
-async function renderAdminTickets() {
-  const container = document.getElementById("adminTickets");
-  if (!container) return;
-
-  const tickets = await getTickets();
-  container.innerHTML = "";
-  const grid = document.createElement("div");
-  grid.className = "tickets-grid";
-
-  tickets.forEach(ticket => {
-    const div = document.createElement("div");
-    div.className = "ticket";
-    div.innerHTML = `
-      <strong>${ticket.title}</strong> — <em>${ticket.name}</em><br>
-      ${ticket.description}<br>
-      Priority: ${ticket.priority}<br>
-      Date: ${ticket.date}<br>
-      Status:
-      <select onchange="updateStatus('${ticket.id}', this.value)">
-        <option ${ticket.status === "Open" ? "selected" : ""}>Open</option>
-        <option ${ticket.status === "In Progress" ? "selected" : ""}>In Progress</option>
-        <option ${ticket.status === "Resolved" ? "selected" : ""}>Resolved</option>
-      </select>
-    `;
-    grid.appendChild(div);
-  });
-
-  container.appendChild(grid);
-}
-
-const form = document.getElementById("ticketForm");
-if (form) {
-  form.addEventListener("submit", async function (e) {
+if (submitBtn) {
+  submitBtn.addEventListener("click", async (e) => {
     e.preventDefault();
 
-    const name = document.getElementById("name").value.trim();
-    const department = document.getElementById("department").value;
-    const title = document.getElementById("title").value;
-    const description = document.getElementById("description").value;
-    const priority = document.getElementById("priority").value;
-    const date = new Date().toLocaleDateString();
+    const fullName = document.getElementById("full-name").value;
+    const matricNumber = document.getElementById("matric-number").value;
+    const email = document.getElementById("email").value;
+    const issue = document.getElementById("issue").value;
 
-    localStorage.setItem("currentUser", name);
+    if (!fullName || !matricNumber || !email || !issue) {
+      alert("Please fill in all fields.");
+      return;
+    }
 
-    await saveTicket({
-      name,
-      department,
-      title,
-      description,
-      priority,
-      date,
-      status: "Open"
-    });
+    try {
+      await addDoc(collection(db, "tickets"), {
+        fullName,
+        matricNumber,
+        email,
+        issue,
+        submittedAt: new Date().toISOString()
+      });
 
-    document.getElementById("success-message").textContent = "Application Submitted!";
-    setTimeout(() => {
-      document.getElementById("success-message").textContent = "";
-    }, 3000);
+      alert("Ticket submitted successfully!");
 
-    this.reset();
-    renderUserTickets();
+      // Clear form fields
+      document.getElementById("full-name").value = "";
+      document.getElementById("matric-number").value = "";
+      document.getElementById("email").value = "";
+      document.getElementById("issue").value = "";
+
+      // Refresh ticket list
+      loadSubmittedTickets();
+
+    } catch (error) {
+      console.error("Error submitting ticket:", error);
+      alert("Something went wrong. Please try again later.");
+    }
   });
 }
 
-if (isAdmin) {
-  renderAdminTickets();
-} else {
-  window.addEventListener("load", renderUserTickets);
-  document.getElementById("name")?.addEventListener("input", renderUserTickets);
+// ============ Load Submitted Tickets (User Panel) ============ //
+async function loadSubmittedTickets() {
+  const ticketList = document.getElementById("submitted-tickets");
+
+  if (!ticketList) return;
+
+  ticketList.innerHTML = "<p>Loading...</p>";
+
+  try {
+    const querySnapshot = await getDocs(collection(db, "tickets"));
+    ticketList.innerHTML = "";
+
+    querySnapshot.forEach((doc) => {
+      const ticket = doc.data();
+      const ticketItem = document.createElement("div");
+      ticketItem.classList.add("ticket-item");
+      ticketItem.innerHTML = `
+        <p><strong>Name:</strong> ${ticket.fullName}</p>
+        <p><strong>Matric:</strong> ${ticket.matricNumber}</p>
+        <p><strong>Email:</strong> ${ticket.email}</p>
+        <p><strong>Issue:</strong> ${ticket.issue}</p>
+        <hr>
+      `;
+      ticketList.appendChild(ticketItem);
+    });
+
+    if (ticketList.innerHTML === "") {
+      ticketList.innerHTML = "<p>No submitted tickets yet.</p>";
+    }
+
+  } catch (error) {
+    ticketList.innerHTML = "<p>Error loading tickets.</p>";
+    console.error(error);
+  }
 }
+
+loadSubmittedTickets(); // load on page open
+
+// ============ Admin Panel Ticket View ============ //
+async function loadAdminTickets() {
+  const adminTicketList = document.getElementById("admin-ticket-list");
+
+  if (!adminTicketList) return;
+
+  adminTicketList.innerHTML = "<p>Loading...</p>";
+
+  try {
+    const querySnapshot = await getDocs(collection(db, "tickets"));
+    adminTicketList.innerHTML = "";
+
+    querySnapshot.forEach((doc) => {
+      const ticket = doc.data();
+      const ticketItem = document.createElement("div");
+      ticketItem.classList.add("admin-ticket-item");
+      ticketItem.innerHTML = `
+        <p><strong>Name:</strong> ${ticket.fullName}</p>
+        <p><strong>Matric:</strong> ${ticket.matricNumber}</p>
+        <p><strong>Email:</strong> ${ticket.email}</p>
+        <p><strong>Issue:</strong> ${ticket.issue}</p>
+        <p><strong>Submitted:</strong> ${new Date(ticket.submittedAt).toLocaleString()}</p>
+        <hr>
+      `;
+      adminTicketList.appendChild(ticketItem);
+    });
+
+    if (adminTicketList.innerHTML === "") {
+      adminTicketList.innerHTML = "<p>No tickets found.</p>";
+    }
+
+  } catch (error) {
+    adminTicketList.innerHTML = "<p>Error loading tickets.</p>";
+    console.error(error);
+  }
+}
+
+loadAdminTickets(); // load on page open
